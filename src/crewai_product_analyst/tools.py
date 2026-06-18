@@ -1,6 +1,7 @@
 import asyncio
 import concurrent.futures
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -23,9 +24,24 @@ def _run_async(coro):
 
 async def _call_mcp_tool(tool_name: str, arguments: dict) -> dict:
     """Call an ai-analyze MCP tool via stdio transport."""
+    ai_root = Path(__file__).resolve().parent.parent.parent.parent / "apps" / "asset-lens"
+    # Traverse up to find invest-kit root, then find ai-analyze
+    path = Path(__file__).resolve()
+    invest_kit_root = None
+    for parent in path.parents:
+        if (parent / "apps").is_dir() and (parent / "libs").is_dir():
+            invest_kit_root = parent
+            break
+    ai_root = invest_kit_root.parent.parent / "work" / "research" / "ai-analyze" if invest_kit_root else None
+
+    env = {**os.environ}
+    if ai_root and ai_root.exists():
+        env["PYTHONPATH"] = f"{ai_root}:{env.get('PYTHONPATH', '')}"
+
     server_params = StdioServerParameters(
         command="python",
         args=["-m", "mcp_server"],
+        env=env,
     )
 
     async with stdio_client(server_params) as (read, write):
@@ -58,63 +74,60 @@ def _format_mcp_result(data: dict, project_name: str) -> str:
     # AST section
     ast_data = data.get("ast", {})
     if ast_data:
-        ast_files = ast_data.get("files", [])
-        lines.append(f"## AST Analysis ({len(ast_files)} files of {ast_data.get('analyzed_files', 'N/A')} total)")
+        lines.append(
+            f"## AST Analysis ({ast_data.get('analyzed_files', 0)} files"
+            f" of {ast_data.get('total_files_in_project', '?')} total)"
+        )
         lines.append("")
 
-        total_funcs = sum(len(f.get("functions", [])) for f in ast_files)
-        total_classes = sum(len(f.get("classes", [])) for f in ast_files)
-        total_smells = sum(len(f.get("code_smells", [])) for f in ast_files)
-        complexities = [
-            f.get("overall_complexity", {}).get("cyclomatic", 0)
-            for f in ast_files
-            if f.get("overall_complexity")
-        ]
-        avg_c = sum(complexities) / len(complexities) if complexities else 0
+        lines.append(
+            f"- **Functions:** {ast_data.get('total_functions', 0)}, "
+            f"**Classes:** {ast_data.get('total_classes', 0)}, "
+            f"**Code Smells:** {ast_data.get('total_code_smells', 0)}"
+        )
+        lines.append(f"- **Avg cyclomatic complexity:** {ast_data.get('average_cyclomatic_complexity', '?')}")
+        lines.append(f"- **Deep nesting (>4 levels):** {ast_data.get('deep_nesting_count', 0)} files")
 
-        lines.append(f"- **Functions:** {total_funcs}, **Classes:** {total_classes}, **Code Smells:** {total_smells}")
-        lines.append(f"- **Avg cyclomatic complexity:** {avg_c:.1f}")
-
-        # Severity breakdown
-        severity_count: dict[str, int] = {}
-        smell_types: dict[str, int] = {}
-        for f in ast_files:
-            for smell in f.get("code_smells", []):
-                sev = smell.get("severity", "unknown")
-                severity_count[sev] = severity_count.get(sev, 0) + 1
-                name = smell.get("name", "unknown")
-                smell_types[name] = smell_types.get(name, 0) + 1
-
-        if severity_count:
+        sev = ast_data.get("code_smells_by_severity", {})
+        if sev:
             lines.append("")
             lines.append("### Code Smells by Severity")
-            for sev in ["critical", "high", "medium", "low"]:
-                if sev in severity_count:
-                    lines.append(f"- **{sev}**: {severity_count[sev]}")
+            for s, c in sev.items():
+                lines.append(f"- **{s}**: {c}")
 
-        if smell_types:
-            top_smells = sorted(smell_types.items(), key=lambda x: -x[1])[:5]
+        smells = ast_data.get("most_common_smell_types", {})
+        if smells:
             lines.append("")
             lines.append("### Most Common Smell Types")
-            for name, count in top_smells:
+            for name, count in list(smells.items())[:5]:
                 lines.append(f"- **{name}**: {count} occurrences")
 
-        # Most complex files
-        sorted_ast = sorted(ast_files, key=lambda f: f.get("overall_complexity", {}).get("cyclomatic", 0), reverse=True)
-        lines.append("")
-        lines.append("### Most Complex Files (Top 5)")
-        for f in sorted_ast[:5]:
-            c = f.get("overall_complexity", {})
-            path_short = f.get("file_path", "").replace(data.get("project_path", ""), "").lstrip("/")
-            lines.append(f"- **{path_short}** — C={c.get('cyclomatic', '?')}, {c.get('lines_of_code', '?')} LOC, {len(f.get('functions', []))} funcs")
+        lang_bd = ast_data.get("language_breakdown", {})
+        if lang_bd:
+            lines.append("")
+            lines.append("### Language Breakdown")
+            for lang, stats in lang_bd.items():
+                lines.append(f"- **{lang}**: {stats['files']} files, {stats['functions']} funcs, {stats['classes']} classes")
 
-        # Largest files
-        largest = sorted(ast_files, key=lambda f: f.get("total_lines", 0), reverse=True)
-        lines.append("")
-        lines.append("### Largest Files (Top 5)")
-        for f in largest[:5]:
-            path_short = f.get("file_path", "").replace(data.get("project_path", ""), "").lstrip("/")
-            lines.append(f"- **{path_short}** — {f.get('total_lines', '?')} lines, {len(f.get('functions', []))} functions, {len(f.get('classes', []))} classes")
+        complex_files = ast_data.get("most_complex_files", [])
+        if complex_files:
+            lines.append("")
+            lines.append("### Most Complex Files (Top 5)")
+            for f in complex_files:
+                lines.append(
+                    f"- **{f['file']}** — C={f['cyclomatic_complexity']}, "
+                    f"{f['lines_of_code']} LOC, {f['functions']} funcs, {f['code_smells']} smells"
+                )
+
+        large_files = ast_data.get("largest_files", [])
+        if large_files:
+            lines.append("")
+            lines.append("### Largest Files (Top 5)")
+            for f in large_files:
+                lines.append(
+                    f"- **{f['file']}** — {f['total_lines']} lines, "
+                    f"{f['functions']} funcs, {f['classes']} classes, {f['code_smells']} smells"
+                )
 
     # Dependency section
     dep_data = data.get("dependency", {})
