@@ -31,7 +31,6 @@ dependencies = [
     "httpx>=0.27.0",
     "beautifulsoup4>=4.12.0",
     "markdown>=3.5.0",
-    "ai-project-analyzer>=0.3.0",
 ]
 
 [project.optional-dependencies]
@@ -51,9 +50,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/crewai_product_analyst"]
-
-[tool.uv.sources]
-ai-project-analyzer = { path = "/Users/erishen/Workspace/CNB/individular-invest/work/research/ai-analyze", editable = true }
 
 [tool.uv]
 package = true
