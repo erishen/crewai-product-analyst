@@ -6,21 +6,27 @@ from crewai_product_analyst.agents import RESEARCHER, STRATEGIST, WRITER
 RESEARCH_TASK = Task(
     description=(
         "Analyze the product or company: {topic}\n\n"
-        "First, use the **Read Local Project** tool to read the project directory. "
-        "The project path is: /Users/erishen/Workspace/CNB/individular-invest/invest-kit/apps/asset-lens. "
-        "Read the README, pyproject.toml, and project structure.\n\n"
-        "Then, research the product/company using **Web Search** for market context.\n\n"
+        "## Workflow (execute in order):\n\n"
+        "1. **Read Local Project** — Read the project directory at:\n"
+        "   /Users/erishen/Workspace/CNB/individular-invest/invest-kit/apps/asset-lens\n"
+        "   Read README, pyproject.toml, and directory listing.\n\n"
+        "2. **Analyze Code Structure** — Run deep AST analysis on the same project path.\n"
+        "   This provides function/class counts, complexity metrics, code smells, imports, "
+        "and the largest/most complex files. Use this data alongside the README.\n\n"
+        "3. **Web Search** — Search for market context (competitors, industry trends).\n"
+        "   If the project is a personal project with no public presence, skip this step.\n\n"
         "Your deliverables (all in **Chinese**):\n"
         "1. 项目概况 — 项目是什么，核心功能，目标用户\n"
         "2. 技术栈分析 — 使用的语言、框架、关键技术\n"
         "3. 项目结构 — 主要模块和代码组织方式\n"
-        "4. 功能亮点 — 区别于同类项目的特性\n"
-        "5. 市场定位 — 适用场景，优劣势分析\n\n"
-        "包括具体的数据点和引用来源。"
+        "4. 代码质量评估 — 基于 AST 分析的复杂度、代码坏味道、文件结构\n"
+        "5. 功能亮点 — 区别于同类项目的特性\n"
+        "6. 市场定位 — 适用场景，优劣势分析\n\n"
+        "引用具体的数据点：文件数量、函数/类数量、平均复杂度、代码坏味道分布、最大文件。"
     ),
     expected_output=(
         "An exhaustive research memo in Chinese with sections: "
-        "项目概况, 技术栈分析, 项目结构, 功能亮点, 市场定位."
+        "项目概况, 技术栈分析, 项目结构, 代码质量评估, 功能亮点, 市场定位."
     ),
     agent=RESEARCHER,
 )

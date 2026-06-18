@@ -1,6 +1,6 @@
 from crewai import Agent
 
-from crewai_product_analyst.tools import web_search, fetch_webpage, read_local_project
+from crewai_product_analyst.tools import web_search, fetch_webpage, read_local_project, analyze_code_structure
 
 
 RESEARCHER = Agent(
@@ -13,7 +13,7 @@ RESEARCHER = Agent(
     ),
     allow_delegation=False,
     verbose=True,
-    tools=[web_search, fetch_webpage, read_local_project],
+    tools=[web_search, fetch_webpage, read_local_project, analyze_code_structure],
 )
 
 STRATEGIST = Agent(
