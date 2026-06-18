@@ -1,9 +1,150 @@
-import os
-from pathlib import Path
+import asyncio
+import concurrent.futures
+import json
 import subprocess
+from pathlib import Path
 
 import httpx
 from crewai.tools import tool
+from mcp import ClientSession
+from mcp.client.stdio import stdio_client, StdioServerParameters
+
+
+def _run_async(coro):
+    """Safely run an async coroutine from a sync context."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        return pool.submit(asyncio.run, coro).result()
+
+
+async def _call_mcp_tool(tool_name: str, arguments: dict) -> dict:
+    """Call an ai-analyze MCP tool via stdio transport."""
+    server_params = StdioServerParameters(
+        command="python",
+        args=["-m", "mcp_server"],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(tool_name, arguments)
+            text = result.content[0].text if result.content else "{}"
+            return json.loads(text)
+
+
+def _format_mcp_result(data: dict, project_name: str) -> str:
+    """Format MCP analysis result into readable text for the agent."""
+    lines = [
+        f"# Code Analysis: {project_name}",
+        f"**Total source files analyzed:** {data.get('total_files', 'N/A')}",
+        "",
+    ]
+
+    # Quality section
+    quality = data.get("quality", {})
+    if quality:
+        score = quality.get("score", quality.get("total_score", "N/A"))
+        grade = quality.get("grade", "N/A")
+        lines.append(f"## Quality Score: {score}/100 (Grade: {grade})")
+        if "dimensions" in quality:
+            for dim, val in quality["dimensions"].items():
+                lines.append(f"- **{dim}**: {val}")
+        lines.append("")
+
+    # AST section
+    ast_data = data.get("ast", {})
+    if ast_data:
+        ast_files = ast_data.get("files", [])
+        lines.append(f"## AST Analysis ({len(ast_files)} files of {ast_data.get('analyzed_files', 'N/A')} total)")
+        lines.append("")
+
+        total_funcs = sum(len(f.get("functions", [])) for f in ast_files)
+        total_classes = sum(len(f.get("classes", [])) for f in ast_files)
+        total_smells = sum(len(f.get("code_smells", [])) for f in ast_files)
+        complexities = [
+            f.get("overall_complexity", {}).get("cyclomatic", 0)
+            for f in ast_files
+            if f.get("overall_complexity")
+        ]
+        avg_c = sum(complexities) / len(complexities) if complexities else 0
+
+        lines.append(f"- **Functions:** {total_funcs}, **Classes:** {total_classes}, **Code Smells:** {total_smells}")
+        lines.append(f"- **Avg cyclomatic complexity:** {avg_c:.1f}")
+
+        # Severity breakdown
+        severity_count: dict[str, int] = {}
+        smell_types: dict[str, int] = {}
+        for f in ast_files:
+            for smell in f.get("code_smells", []):
+                sev = smell.get("severity", "unknown")
+                severity_count[sev] = severity_count.get(sev, 0) + 1
+                name = smell.get("name", "unknown")
+                smell_types[name] = smell_types.get(name, 0) + 1
+
+        if severity_count:
+            lines.append("")
+            lines.append("### Code Smells by Severity")
+            for sev in ["critical", "high", "medium", "low"]:
+                if sev in severity_count:
+                    lines.append(f"- **{sev}**: {severity_count[sev]}")
+
+        if smell_types:
+            top_smells = sorted(smell_types.items(), key=lambda x: -x[1])[:5]
+            lines.append("")
+            lines.append("### Most Common Smell Types")
+            for name, count in top_smells:
+                lines.append(f"- **{name}**: {count} occurrences")
+
+        # Most complex files
+        sorted_ast = sorted(ast_files, key=lambda f: f.get("overall_complexity", {}).get("cyclomatic", 0), reverse=True)
+        lines.append("")
+        lines.append("### Most Complex Files (Top 5)")
+        for f in sorted_ast[:5]:
+            c = f.get("overall_complexity", {})
+            path_short = f.get("file_path", "").replace(data.get("project_path", ""), "").lstrip("/")
+            lines.append(f"- **{path_short}** — C={c.get('cyclomatic', '?')}, {c.get('lines_of_code', '?')} LOC, {len(f.get('functions', []))} funcs")
+
+        # Largest files
+        largest = sorted(ast_files, key=lambda f: f.get("total_lines", 0), reverse=True)
+        lines.append("")
+        lines.append("### Largest Files (Top 5)")
+        for f in largest[:5]:
+            path_short = f.get("file_path", "").replace(data.get("project_path", ""), "").lstrip("/")
+            lines.append(f"- **{path_short}** — {f.get('total_lines', '?')} lines, {len(f.get('functions', []))} functions, {len(f.get('classes', []))} classes")
+
+    # Dependency section
+    dep_data = data.get("dependency", {})
+    if dep_data:
+        lines.append("")
+        lines.append("## Dependency Analysis")
+        for key, val in dep_data.items():
+            if isinstance(val, list) and len(val) <= 10:
+                for item in val:
+                    if isinstance(item, dict):
+                        lines.append(f"- {item.get('source', item.get('file', '?'))} → {item.get('target', item.get('depends_on', '?'))}")
+                    else:
+                        lines.append(f"- {item}")
+            elif isinstance(val, (int, float, str)):
+                lines.append(f"- **{key}**: {val}")
+
+    # Security section
+    sec_data = data.get("security", {})
+    if sec_data:
+        findings = sec_data.get("findings", [])
+        if findings:
+            lines.append("")
+            lines.append(f"## Security Findings ({len(findings)})")
+            for finding in findings[:10]:
+                sev = finding.get("severity", "")
+                desc = finding.get("description", finding.get("message", ""))
+                location = finding.get("location", finding.get("file", ""))
+                lines.append(f"- [{sev}] {desc} @ {location}")
+
+    return "\n".join(lines)
 
 
 @tool("Web Search")
@@ -47,14 +188,12 @@ def read_local_project(project_path: str) -> str:
     parts = []
     parts.append(f"# Project: {path.name}\n")
 
-    # README
     for readme in ("README.md", "README.zh-CN.md"):
         rp = path / readme
         if rp.exists():
             parts.append(f"## README\n{rp.read_text()[:3000]}\n")
             break
 
-    # pyproject.toml / package.json
     for cfg in ("pyproject.toml", "package.json"):
         cp = path / cfg
         if cp.exists():
@@ -62,7 +201,6 @@ def read_local_project(project_path: str) -> str:
             parts.append(f"## {cfg}\n```\n{content[:2000]}\n```\n")
             break
 
-    # Top-level directory listing
     try:
         result = subprocess.run(
             ["ls", "-F", str(path)],
@@ -73,7 +211,6 @@ def read_local_project(project_path: str) -> str:
     except Exception as e:
         parts.append(f"(Could not list dir: {e})")
 
-    # README.zh-CN for more context
     rp_zh = path / "README.zh-CN.md"
     if rp_zh.exists():
         parts.append(f"\n## README.zh-CN\n{rp_zh.read_text()[:2000]}\n")
@@ -83,97 +220,22 @@ def read_local_project(project_path: str) -> str:
 
 @tool("Analyze Code Structure")
 def analyze_code_structure(project_path: str) -> str:
-    """Run AST-based code structure analysis on a project.
-    Returns detailed info about functions, classes, complexity, dependencies, and code smells.
+    """Run code analysis on a project using AI-Analyze MCP server.
+    Returns quality score, complexity metrics, code smells, dependencies, and security findings.
     Provide an absolute path like /Users/erishen/path/to/project."""
-    import json
-    import tempfile
-
     path = Path(project_path).expanduser().resolve()
     if not path.exists():
         return f"Error: path {path} does not exist"
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w")
-    tmp_path = tmp.name
-    tmp.close()
-
     try:
-        result = subprocess.run(
-            ["uv", "run", "ai-analyze", "ast", str(path), "--output", tmp_path],
-            capture_output=True, text=True, timeout=300,
-        )
-
-        with open(tmp_path) as f:
-            data = json.load(f)
-    except subprocess.TimeoutExpired:
-        return "Error: AST analysis timed out after 300 seconds"
-    except json.JSONDecodeError as e:
-        return f"Error: failed to parse AST analysis output: {e}\nSTDERR: {result.stderr[:1000]}"
+        data = _run_async(_call_mcp_tool("analyze_project", {
+            "project_path": str(path),
+            "analysis_types": "ast,quality,dependency",
+        }))
     except Exception as e:
-        return f"Error: AST analysis failed: {e}"
-    finally:
-        Path(tmp_path).unlink(missing_ok=True)
+        return f"Error: MCP analysis failed: {e}"
 
     if "error" in data:
-        return f"AST analysis error: {data['error']}"
+        return f"Analysis error: {data['error']}"
 
-    s = data["summary"]
-    lines = [
-        f"# Code Structure Analysis: {Path(data['project_path']).name}",
-        "",
-        f"**{s['total_files']}** files, **{s['total_functions']}** functions, **{s['total_classes']}** classes, **{s['total_code_smells']}** code smells",
-        f"**Average cyclomatic complexity:** {s['average_complexity']:.1f}",
-        "",
-        "## Language Breakdown",
-    ]
-
-    for lang, stats in sorted(s["languages"].items()):
-        lines.append(f"- **{lang}**: {stats['files']} files, {stats['functions']} functions, {stats['classes']} classes")
-
-    # Top 10 most complex files
-    sorted_files = sorted(data["files"], key=lambda f: f["overall_complexity"]["cyclomatic"], reverse=True)
-    lines.extend(["", "## Most Complex Files (Top 10)"])
-
-    for f in sorted_files[:10]:
-        c = f["overall_complexity"]
-        path_short = f["file_path"].replace(str(data["project_path"]), "").lstrip("/")
-        lines.append(f"- **{path_short}** — C={c['cyclomatic']}, {c['lines_of_code']} LOC, {c['comment_lines']} comments")
-
-    # Code smells summary
-    all_smells = []
-    for f in data["files"]:
-        for smell in f.get("code_smells", []):
-            all_smells.append(smell)
-
-    if all_smells:
-        severity_count = {}
-        for smell in all_smells:
-            sev = smell["severity"]
-            severity_count[sev] = severity_count.get(sev, 0) + 1
-
-        lines.extend(["", "## Code Smells by Severity"])
-        for sev in ["critical", "high", "medium", "low"]:
-            if sev in severity_count:
-                lines.append(f"- **{sev}**: {severity_count[sev]}")
-
-        # Most common smell types
-        smell_types = {}
-        for smell in all_smells:
-            name = smell["name"]
-            smell_types[name] = smell_types.get(name, 0) + 1
-
-        top_smells = sorted(smell_types.items(), key=lambda x: -x[1])[:5]
-        lines.extend(["", "## Most Common Smell Types"])
-        for name, count in top_smells:
-            lines.append(f"- **{name}**: {count} occurrences")
-
-    # Key files with structure overview
-    large_files = sorted(data["files"], key=lambda f: f["total_lines"], reverse=True)[:5]
-    lines.extend(["", "## Largest Files (Top 5)"])
-    for f in large_files:
-        path_short = f["file_path"].replace(str(data["project_path"]), "").lstrip("/")
-        lines.append(f"- **{path_short}** — {f['total_lines']} lines total, {len(f['functions'])} functions, {len(f['classes'])} classes")
-        if f["imports"]:
-            lines.append(f"  - Imports: {', '.join(f['imports'][:8])}")
-
-    return "\n".join(lines)
+    return _format_mcp_result(data, path.name)
