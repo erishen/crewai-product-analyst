@@ -1,0 +1,71 @@
+[project]
+name = "crewai-product-analyst"
+version = "0.1.0"
+description = "AI-powered product analyst powered by CrewAI multi-agent orchestration"
+authors = [
+    { name = "Erishen Sun" },
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "MIT" }
+keywords = ["crewai", "product-analysis", "competitive-analysis", "multi-agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "crewai>=1.14.0",
+    "crewai-tools>=1.14.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+    "typer>=0.9.0",
+    "httpx>=0.27.0",
+    "beautifulsoup4>=4.12.0",
+    "markdown>=3.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=7.1.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+product-analyst = "crewai_product_analyst.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/crewai_product_analyst"]
+
+[tool.uv]
+package = true
+dev-dependencies = [
+    "pytest>=7.4.0",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["crewai_product_analyst"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
