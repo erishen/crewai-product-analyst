@@ -64,14 +64,31 @@ def main():
     os.environ["PROJECT_ANALYSIS_CONTEXT"] = summary
 
     print("Running product analysis...")
-    from crewai_product_analyst.crew import run_analysis
-    result = run_analysis(topic=args.project_path.name, verbose=True)
+    from crewai_product_analyst.crew import create_crew
 
-    if args.output:
-        args.output.write_text(result)
-        print(f"Report saved to {args.output}")
+    crew = create_crew(topic=args.project_path.name, verbose=True)
+    result = crew.kickoff(inputs={"topic": args.project_path.name})
+
+    raw = result.raw if hasattr(result, "raw") else str(result)
+
+    output_path = args.output or Path(f"{args.project_path.name}_product_analysis.md")
+    output_path.write_text(raw)
+    print(f"\nReport saved to: {output_path.resolve()}")
+
+    print("\n" + "=" * 60)
+    print("TOKEN USAGE")
+    print("=" * 60)
+    tu = result.token_usage if hasattr(result, "token_usage") else None
+    if tu:
+        if hasattr(tu, "model_dump"):
+            tu = tu.model_dump()
+        if isinstance(tu, dict):
+            for k, v in tu.items():
+                print(f"  {k}: {v}")
+        else:
+            print(f"  {tu}")
     else:
-        print(result)
+        print("  (not available)")
 
 
 if __name__ == "__main__":
