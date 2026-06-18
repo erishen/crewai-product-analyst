@@ -71,7 +71,9 @@ def main():
 
     raw = result.raw if hasattr(result, "raw") else str(result)
 
-    output_path = args.output or Path(f"{args.project_path.name}_product_analysis.md")
+    output_dir = Path("output")
+    output_dir.mkdir(exist_ok=True)
+    output_path = args.output or output_dir / f"{args.project_path.name}_product_analysis.md"
     output_path.write_text(raw)
     print(f"\nReport saved to: {output_path.resolve()}")
 
