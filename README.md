@@ -57,19 +57,13 @@ Topic → Researcher (research memo)
 
 ## Configuration
 
-Copy `.env.example` to `.env` and set your LLM provider:
+Copy `.env.example` to `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-By default CrewAI uses OpenAI. For Ollama, set:
-
-```bash
-OPENAI_BASE_URL=http://localhost:11434/v1
-OPENAI_MODEL_NAME=ollama/llama3.1
-OPENAI_API_KEY=ollama
-```
+Edit `.env` to choose your LLM provider — **DeepSeek** is recommended (ultra-low cost, ~¥0.5 per full analysis). See `.env.example` for OpenAI and Ollama options.
 
 ## Project Structure
 

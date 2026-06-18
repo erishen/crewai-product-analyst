@@ -57,19 +57,13 @@ product-analyst version
 
 ## 配置
 
-复制 `.env.example` 为 `.env` 并配置 LLM 提供商：
+复制 `.env.example` 为 `.env`：
 
 ```bash
 cp .env.example .env
 ```
 
-默认使用 OpenAI。如需使用 Ollama：
-
-```bash
-OPENAI_BASE_URL=http://localhost:11434/v1
-OPENAI_MODEL_NAME=ollama/llama3.1
-OPENAI_API_KEY=ollama
-```
+编辑 `.env` 选择 LLM 提供商——推荐使用 **DeepSeek**（成本极低，一次完整分析约 ¥0.5）。`.env.example` 中还有 OpenAI 和 Ollama 的配置示例。
 
 ## License
 
