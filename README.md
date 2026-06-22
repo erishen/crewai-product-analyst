@@ -5,7 +5,7 @@
 
 AI-powered product analysis tool powered by [CrewAI](https://www.crewai.com/) multi-agent orchestration. Uses three specialized AI agents to research, strategize, and write comprehensive product analysis reports.
 
-## Skill 定义
+## Skill Definition
 
 ```yaml
 name: crewai-product-analyst
@@ -14,76 +14,76 @@ version: 1.0.0
 category: product-analysis
 ```
 
-## 能力范围
+## Capabilities
 
 ```yaml
 capabilities:
-  - 本地项目产品分析：读取本地项目 README、文档、代码结构，输出产品级分析报告
-  - 竞品分析：通过 Web Search 获取市场格局和竞品信息
-  - 三阶段流水线：Research（产品研究）→ Strategy（策略分析）→ Writing（报告撰写）
-  - 产品级输出：用户画像、功能矩阵、竞争格局、增长策略、路线图优先级
-  - Markdown 报告：自动保存到 output/ 目录
+  - Local project analysis: reads README, docs, and code structure to produce product-level reports
+  - Competitive analysis: uses Web Search to gather market landscape and competitor intelligence
+  - Three-stage pipeline: Research → Strategy → Writing
+  - Product-level output: user personas, feature matrix, competitive landscape, growth strategy, roadmap priorities
+  - Markdown reports: auto-saved to output/ directory
 
 limitations:
-  - 不处理非产品类分析（技术审计、代码审查等不属于产品分析的范畴）
-  - 不执行实际代码修改或工程操作
-  - 不访问互联网上需要认证的私有数据源
-  - 不涉及实时监控或持续集成
+  - Does not handle non-product analysis (tech audits, code reviews, etc.)
+  - Does not execute actual code changes or engineering operations
+  - Does not access authenticated private data sources on the internet
+  - Does not involve real-time monitoring or continuous integration
 ```
 
-## 架构
+## Architecture
 
 ### Agents
 
 | Agent | Role | Responsibility | Tools |
 |-------|------|----------------|-------|
-| Researcher | 市场研究分析师 | 产品定义、用户画像、功能全景、竞争格局 | Web Search, Fetch Webpage, Read Local Project, Analyze Code Structure |
-| Strategist | 产品策略顾问 | 定位评估、增长策略、路线图优先级、商业化建议 | (无独立工具，依赖 Researcher 输出) |
-| Writer | 技术撰稿人 | 将分析和策略合成为可发布的报告 | (无独立工具，依赖 Researcher + Strategist 输出) |
+| Researcher | Market Research Analyst | Product definition, user personas, feature landscape, competitive landscape | Web Search, Fetch Webpage, Read Local Project, Analyze Code Structure |
+| Strategist | Product Strategy Consultant | Positioning evaluation, growth strategy, roadmap priorities, monetization | (no independent tools, depends on Researcher output) |
+| Writer | Technical Writer | Synthesizes analysis and strategy into a publishable report | (no independent tools, depends on Researcher + Strategist output) |
 
 ### Pipeline
 
 ```
-输入：本地项目路径
+Input: local project path
   ↓
-Researcher → 产品研究备忘录
-  │            产品定义、用户画像、功能矩阵、用户体验、竞争格局、市场评估
+Researcher → Product Research Memo
+  │            Product definition, user personas, feature matrix, UX, competitive landscape
   ↓
-Strategist → 策略分析备忘录
-  │            核心发现、定位评估、增长策略、路线图、风险与挑战
+Strategist → Strategy Analysis Memo
+  │            Key findings, positioning evaluation, growth strategy, roadmap, risks
   ↓
-Writer → 产品分析报告（最终输出）
-            执行摘要、产品深度解析、竞争分析、战略建议、结论
+Writer → Product Analysis Report (final output)
+           Executive summary, product deep-dive, competitive analysis, strategic recommendations, conclusion
 ```
 
-## 使用方法
+## Usage
 
-### 分析本地项目
+### Analyze Local Project
 
 ```bash
-# 分析一个本地项目，自动保存报告到 output/
+# Analyze a local project, auto-save report to output/
 uv run python examples/analyze_local.py /path/to/project
 
-# 指定输出路径
+# Specify output path
 uv run python examples/analyze_local.py /path/to/project -o my-report.md
 ```
 
-### 在线产品分析
+### Online Product Analysis
 
 ```bash
-# 分析一个公开产品或公司
+# Analyze a public product or company
 product-analyst analyze "Notion AI"
 
-# 保存到文件
+# Save to file
 product-analyst analyze "Cursor IDE" --output reports/cursor-analysis.md
 
-# 安静模式（不显示 agent 日志）
+# Quiet mode (suppress agent logs)
 product-analyst analyze "Perplexity AI" --quiet
 ```
 
-### 查看 Token 使用情况
+### View Token Usage
 
-每次运行完成后会自动打印 Token 使用统计：
+Token usage statistics are printed automatically after each run:
 
 ```
 ============================================================
@@ -96,83 +96,83 @@ TOKEN USAGE
 ============================================================
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 crewai-product-analyst/
 ├── src/crewai_product_analyst/
-│   ├── agents.py      # Agent 定义（Researcher / Strategist / Writer）
-│   ├── tasks.py       # Task 定义（三阶段流水线描述）
-│   ├── crew.py        # Crew 编排（顺序执行）
-│   ├── tools.py       # 自定义工具
-│   │   ├── Web Search           # DuckDuckGo 搜索
-│   │   ├── Fetch Webpage        # 网页内容抓取
-│   │   ├── Read Local Project   # 本地项目文件读取
-│   │   └── Analyze Code Structure  # 代码结构分析（通过 ai-analyze CLI）
-│   └── main.py         # CLI 入口
+│   ├── agents.py      # Agent definitions (Researcher / Strategist / Writer)
+│   ├── tasks.py       # Task definitions (three-stage pipeline)
+│   ├── crew.py        # Crew orchestration (sequential execution)
+│   ├── tools.py       # Custom tools
+│   │   ├── Web Search            # DuckDuckGo search
+│   │   ├── Fetch Webpage         # Web content scraping
+│   │   ├── Read Local Project    # Local project file reader
+│   │   └── Analyze Code Structure # AST analysis via ai-analyze CLI
+│   └── main.py        # CLI entry point
 ├── examples/
-│   └── analyze_local.py   # 本地项目分析示例脚本
-├── output/                 # 自动生成的报告（.gitignore）
+│   └── analyze_local.py   # Local project analysis example script
+├── output/                # Auto-generated reports (.gitignore)
 ├── pyproject.toml
 ├── .env.example
 └── README.md
 ```
 
-## Tools 说明
+## Tools
 
 ### Web Search
-调用 DuckDuckGo Lite API 搜索互联网信息，用于竞品分析和市场调研。
+Uses DuckDuckGo Lite API for internet searches, used for competitive analysis and market research.
 
 ### Fetch Webpage
-抓取指定 URL 的文本内容，用于深入了解特定产品或公司。
+Scrapes text content from a given URL for deeper understanding of specific products or companies.
 
 ### Read Local Project
-读取本地项目的 README、配置文件、目录结构，理解产品定位和功能。
+Reads a local project's README, config files, and directory structure to understand product positioning and features.
 
 ### Analyze Code Structure
-通过 `ai-analyze` CLI（subprocess 调用）对本地项目进行 AST 分析，获取：
-- 项目规模（文件数、函数/类数）
-- 语言分布（Python / TypeScript 等）
-- 最复杂/最大文件
-- 代码坏味道分布
-- 平均复杂度
+Uses `ai-analyze` CLI (subprocess call) to perform AST analysis on local projects, obtaining:
+- Project scale (file count, function/class count)
+- Language distribution (Python / TypeScript, etc.)
+- Most complex / largest files
+- Code smell distribution
+- Average complexity
 
-数据用于推断产品成熟度和范围，**不作为最终报告的交付内容**。
+Data is used to infer product maturity and scope, **not delivered in the final report**.
 
-## 配置
+## Configuration
 
 ```bash
 cp .env.example .env
 ```
 
-编辑 `.env` 选择 LLM 提供商：
+Edit `.env` to select your LLM provider:
 
-| Provider | 推荐 | 成本 |
-|----------|------|------|
-| DeepSeek | ✅ 推荐 | ~¥0.5 / 次完整分析 |
-| OpenAI | 可选 | ~$0.8 / 次 |
-| Ollama | 本地运行 | 免费 |
+| Provider | Recommendation | Cost |
+|----------|---------------|------|
+| DeepSeek | ✅ Recommended | ~$0.07 / full analysis |
+| OpenAI | Optional | ~$0.80 / run |
+| Ollama | Local | Free |
 
-## 输出格式
+## Output Format
 
-每份报告包含以下章节：
+Each report includes the following sections:
 
-1. **执行摘要** — 产品价值、市场机会、核心建议
-2. **产品深度解析** — 目标用户、核心功能、用户体验旅程
-3. **竞争分析与市场定位** — 差异化优势、竞争格局
-4. **战略建议** — 定位调整、增长策略、路线图优先级
-5. **结论** — 打分矩阵、行动建议、时间窗口
+1. **Executive Summary** — Product value, market opportunity, core recommendations
+2. **Product Deep-Dive** — Target users, core features, user experience journey
+3. **Competitive Analysis & Market Positioning** — Differentiation advantages, competitive landscape
+4. **Strategic Recommendations** — Positioning adjustments, growth strategies, roadmap priorities
+5. **Conclusion** — Scoring matrix, actionable recommendations, time window
 
-报告为 Markdown 格式，自动保存到 `output/` 目录下。
+Reports are in Markdown format and auto-saved to the `output/` directory.
 
-## 质量标准
+## Quality Standards
 
 ```yaml
 quality:
-  product_focus: "报告必须是产品分析，而非代码审查。零原始代码指标（文件数、函数数、复杂度）出现在最终报告中。"
-  data_grounding: "分析结论必须有数据支撑（README 引用、代码目录结构推断、竞品对比），不做无根据推测。"
-  actionable: "战略建议必须具体、可执行，有优先级、有成本/影响力评估，而不是空泛的建议。"
-  chinese_output: "所有输出为中文，术语准确、行文专业。"
+  product_focus: "Reports must be product analysis, not code reviews. Zero raw code metrics (file count, function count, complexity) in the final report."
+  data_grounding: "Analysis conclusions must be data-backed (README quotes, code structure inference, competitive comparisons). No unsubstantiated speculation."
+  actionable: "Strategic recommendations must be specific, executable, with priority and cost/impact assessments — not vague suggestions."
+  chinese_output: "All output in Chinese, with accurate terminology and professional writing."
 ```
 
 ## License
