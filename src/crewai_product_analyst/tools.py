@@ -188,7 +188,7 @@ def fetch_webpage(url: str) -> str:
 @tool("Read Local Project")
 def read_local_project(project_path: str) -> str:
     """Read a local project's structure, README, and config to understand what it does.
-    Provide an absolute path like /Users/erishen/path/to/project."""
+    Provide an absolute path like /absolute/path/to/project."""
     path = Path(project_path).expanduser().resolve()
     if not path.exists():
         return f"Error: path {path} does not exist"
@@ -230,7 +230,7 @@ def read_local_project(project_path: str) -> str:
 def analyze_code_structure(project_path: str) -> str:
     """Run code analysis on a project using AI-Analyze.
     Returns quality score, complexity metrics, code smells, dependencies, and security findings.
-    Provide an absolute path like /Users/erishen/path/to/project."""
+    Provide an absolute path like /absolute/path/to/project."""
     path = Path(project_path).expanduser().resolve()
     if not path.exists():
         return f"Error: path {path} does not exist"
