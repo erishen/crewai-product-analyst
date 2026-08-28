@@ -1,7 +1,6 @@
 from crewai import Agent
 
-from crewai_product_analyst.tools import web_search, fetch_webpage, read_local_project, analyze_code_structure
-
+from crewai_product_analyst.tools import analyze_code_structure, fetch_webpage, read_local_project, web_search
 
 RESEARCHER = Agent(
     role="Market Research Analyst",

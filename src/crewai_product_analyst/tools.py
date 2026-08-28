@@ -8,7 +8,6 @@ from pathlib import Path
 import httpx
 from crewai.tools import tool
 
-
 logger = logging.getLogger(__name__)
 
 

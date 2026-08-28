@@ -2,7 +2,6 @@ from crewai import Task
 
 from crewai_product_analyst.agents import RESEARCHER, STRATEGIST, WRITER
 
-
 RESEARCH_TASK = Task(
     description=(
         "Analyze the product or company: {topic}\n\n"
