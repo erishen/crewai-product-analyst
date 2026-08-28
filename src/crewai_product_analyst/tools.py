@@ -34,8 +34,11 @@ def _run_ai_analyze_ast(project_path: str) -> dict:
 
     result = subprocess.run(
         [sys.executable, "-m", "cli", "ast", project_path],
-        capture_output=True, text=True, timeout=300,
-        env=env, cwd=str(ai_root),
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(ai_root),
     )
 
     if result.returncode != 0:
@@ -71,9 +74,7 @@ def _format_analysis_result(data: dict, project_name: str) -> str:
                 lines.append(f"- **{dim}**: {val}")
         lines.append("")
     if ast_data:
-        lines.append(
-            f"## AST Analysis ({ast_data.get('total_files', 0)} files)"
-        )
+        lines.append(f"## AST Analysis ({ast_data.get('total_files', 0)} files)")
         lines.append("")
 
         lines.append(
@@ -103,7 +104,9 @@ def _format_analysis_result(data: dict, project_name: str) -> str:
             lines.append("")
             lines.append("### Language Breakdown")
             for lang, stats in lang_bd.items():
-                lines.append(f"- **{lang}**: {stats['files']} files, {stats['functions']} funcs, {stats['classes']} classes")
+                lines.append(
+                    f"- **{lang}**: {stats['files']} files, {stats['functions']} funcs, {stats['classes']} classes"
+                )
 
         complex_files = ast_data.get("most_complex_files", [])
         if complex_files:
@@ -133,7 +136,9 @@ def _format_analysis_result(data: dict, project_name: str) -> str:
             if isinstance(val, list) and len(val) <= 10:
                 for item in val:
                     if isinstance(item, dict):
-                        lines.append(f"- {item.get('source', item.get('file', '?'))} → {item.get('target', item.get('depends_on', '?'))}")
+                        lines.append(
+                            f"- {item.get('source', item.get('file', '?'))} → {item.get('target', item.get('depends_on', '?'))}"
+                        )
                     else:
                         lines.append(f"- {item}")
             elif isinstance(val, (int, float, str)):
@@ -211,7 +216,9 @@ def read_local_project(project_path: str) -> str:
     try:
         result = subprocess.run(
             ["ls", "-F", str(path)],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         files = [l for l in result.stdout.strip().split("\n") if l]
         parts.append(f"## Directory ({len(files)} entries)\n" + "\n".join(f"- {f}" for f in files))

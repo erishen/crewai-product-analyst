@@ -19,7 +19,9 @@ def get_project_summary(project_path: Path) -> str:
     try:
         result = subprocess.run(
             ["find", str(project_path), "-maxdepth", "2", "-type", "f"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         files = [
             p.replace(str(project_path) + "/", "")
@@ -61,6 +63,7 @@ def main():
 
     # Pass summary via env var for the Crew to use
     import os
+
     os.environ["PROJECT_ANALYSIS_CONTEXT"] = summary
 
     print("Running product analysis...")

@@ -13,9 +13,7 @@ console = Console()
 @app.command()
 def analyze(
     topic: str = typer.Argument(..., help="Product or company to analyze"),
-    output: Path = typer.Option(
-        None, "--output", "-o", help="Output file path (default: stdout)"
-    ),
+    output: Path = typer.Option(None, "--output", "-o", help="Output file path (default: stdout)"),
     verbose: bool = typer.Option(True, "--verbose/--quiet"),
 ):
     """Run a full product analysis on the given topic."""

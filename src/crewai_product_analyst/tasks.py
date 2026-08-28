@@ -29,7 +29,7 @@ RESEARCH_TASK = Task(
         "4. 用户体验分析 — 上手难度、CLI/Web 体验、文档质量\n"
         "5. 竞争格局 — 主要竞品对比，差异化优势在哪里\n"
         "6. 市场评估 — 适用场景，潜在市场体量和增长空间\n\n"
-        "用数据说话，但数据点服务于产品讲述（如：\"200+ CLI 子命令表明项目功能极其全面\"）"
+        '用数据说话，但数据点服务于产品讲述（如："200+ CLI 子命令表明项目功能极其全面"）'
     ),
     expected_output=(
         "A product research memo in Chinese with sections: "
@@ -75,8 +75,6 @@ WRITING_TASK = Task(
         "(e.g., 'Deep ML integration shows product ambition beyond simple tracking'). "
         "Do NOT include code quality metrics or raw AST data in the final report."
     ),
-    expected_output=(
-        "A complete product analysis report in Chinese, ready for publication."
-    ),
+    expected_output=("A complete product analysis report in Chinese, ready for publication."),
     agent=WRITER,
 )
