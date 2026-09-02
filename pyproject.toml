@@ -53,6 +53,7 @@ packages = ["src/crewai_product_analyst"]
 
 [tool.uv]
 package = true
+override-dependencies = ["openai>=1.104.2,<2.0.0"]
 dev-dependencies = [
     "pytest>=7.4.0",
 ]

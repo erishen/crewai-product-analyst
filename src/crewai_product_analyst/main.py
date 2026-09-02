@@ -22,6 +22,7 @@ def analyze(
     result = run_analysis(topic=topic, verbose=verbose)
 
     if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(result)
         console.print(f"Report saved to [bold]{output}[/bold]")
     else:
